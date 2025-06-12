@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Focus Forge</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="container">
+
+    <h1 class="title">Focus Forge</h1>
+
+    <button id="powerButton" class="off" title="Toggle Study Mode">
+      <svg viewBox="0 0 24 24" width="48" height="48" fill="white">
+        <path d="M12 2v10m0 0v0m6.36-4.36a9 9 0 11-12.72 0" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </svg>
+    </button>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-button active" data-tab="blockListTab">Block List</button>
+      <button class="tab-button" data-tab="insightsTab">AI Insights</button>
+    </div>
+
+    <!-- Tab content -->
+    <div class="tab-content" id="blockListTab">
+        <section class="section">
+            <h2>Distraction Blocker</h2>
+            <ul class="block-list" id="blockList"></ul>
+            <div class="input-group">
+              <input type="text" id="blockInput" placeholder="Enter URL" />
+              <button id="addBlockBtn">Add Site</button>
+            </div>
+        </section>          
+    </div>
+
+    <div class="tab-content hidden" id="insightsTab">
+      <section class="section">
+        <h2>AI Insights</h2>
+        <div id="insightsContent">
+          <p>Loading usage data...</p>
+        </div>
+      </section>
+    </div>
+      
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
