@@ -5,9 +5,11 @@ const powerButton = document.getElementById("powerButton");
 
 const tabs = document.querySelectorAll(".tab-button");
 const tabContents = document.querySelectorAll(".tab-content");
+const subTabs = document.querySelectorAll(".sub-tab-button");
 
 let blockedSites = [];
 let studyMode = false;
+let currentRange = "today"; // default range
 
 // Render the blocked sites list UI
 function renderList() {
@@ -94,7 +96,7 @@ blockInput.addEventListener("keypress", (e) => {
   if (e.key === "Enter") addSite();
 });
 
-// TAB Switching logic
+// Main tab switching
 tabs.forEach((tabBtn) => {
   tabBtn.addEventListener("click", () => {
     tabs.forEach(t => t.classList.remove("active"));
@@ -106,65 +108,68 @@ tabs.forEach((tabBtn) => {
       else tc.classList.add("hidden");
     });
 
-    // If AI Insights tab opened, load usage data
     if (tabId === "insightsTab") {
-      loadUsageData();
+      loadUsageData(currentRange); // load default range
     }
   });
 });
 
-// Load usage data from background and display insights
-// Load usage data from background and display insights
-function loadUsageData() {
-    const insightsDiv = document.getElementById("insightsContent");
-    insightsDiv.innerHTML = "<p>Loading usage data...</p>";
-  
-    chrome.runtime.sendMessage({ getUsageData: true }, (response) => {
-      if (!response || !response.usageData) {
-        insightsDiv.innerHTML = "<p>No usage data available.</p>";
-        return;
-      }
-  
-      const usageData = response.usageData;
-  
-      // Convert usageData object to array and sort by visits descending
-      const sitesArray = Object.entries(usageData)
-        .map(([site, data]) => ({
-          site,
-          visits: data.visits,
-          totalTime: data.totalTime || 0,  // totalTime in ms
-        }))
-        .sort((a, b) => b.visits - a.visits);
-  
-      if (sitesArray.length === 0) {
-        insightsDiv.innerHTML = "<p>No sites tracked yet.</p>";
-        return;
-      }
-  
-      // Format milliseconds to mm:ss
-      function formatTime(ms) {
-        const totalSeconds = Math.floor(ms / 1000);
-        const minutes = Math.floor(totalSeconds / 60);
-        const seconds = totalSeconds % 60;
-        return `${minutes}m ${seconds}s`;
-      }
-  
-      // Prepare HTML report: top 5 sites visited with counts and time spent
-      let reportHTML = "<h3>Top Visited Sites This Session:</h3><ol>";
-      sitesArray.slice(0, 5).forEach(({ site, visits, totalTime }) => {
-        reportHTML += `<li><strong>${site}</strong>: ${visits} visits, Time spent: ${formatTime(totalTime)}</li>`;
-      });
-      reportHTML += "</ol>";
-  
-      // Additional insights: total visits, total time spent, unique sites count
-      const totalVisits = sitesArray.reduce((sum, x) => sum + x.visits, 0);
-      const totalTimeSpent = sitesArray.reduce((sum, x) => sum + x.totalTime, 0);
-      const uniqueSites = sitesArray.length;
-  
-      reportHTML += `<p><em>Total site visits recorded: ${totalVisits}</em></p>`;
-      reportHTML += `<p><em>Total time spent browsing: ${formatTime(totalTimeSpent)}</em></p>`;
-      reportHTML += `<p><em>Unique sites visited: ${uniqueSites}</em></p>`;
-  
-      insightsDiv.innerHTML = reportHTML;
+// Sub-tab switching (Today, Week, Month)
+subTabs.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    subTabs.forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    currentRange = btn.dataset.range;
+    loadUsageData(currentRange);
+  });
+});
+
+// Load usage data from background based on range
+function loadUsageData(range) {
+  const insightsDiv = document.getElementById("insightsContent");
+  insightsDiv.innerHTML = "<p>Loading usage data...</p>";
+
+  chrome.runtime.sendMessage({ getUsageData: true, range }, (response) => {
+    if (!response || !response.usageData) {
+      insightsDiv.innerHTML = "<p>No usage data available.</p>";
+      return;
+    }
+
+    const usageData = response.usageData;
+    const sitesArray = Object.entries(usageData)
+      .map(([site, data]) => ({
+        site,
+        visits: data.visits,
+        totalTime: data.totalTime || 0,
+      }))
+      .sort((a, b) => b.visits - a.visits);
+
+    if (sitesArray.length === 0) {
+      insightsDiv.innerHTML = "<p>No sites tracked yet.</p>";
+      return;
+    }
+
+    function formatTime(ms) {
+      const totalSeconds = Math.floor(ms / 1000);
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      return `${minutes}m ${seconds}s`;
+    }
+
+    let reportHTML = `<h3>Top Visited Sites (${range.charAt(0).toUpperCase() + range.slice(1)}):</h3><ol>`;
+    sitesArray.slice(0, 5).forEach(({ site, visits, totalTime }) => {
+      reportHTML += `<li><strong>${site}</strong>: ${visits} visits, Time spent: ${formatTime(totalTime)}</li>`;
     });
-  }  
+    reportHTML += "</ol>";
+
+    const totalVisits = sitesArray.reduce((sum, x) => sum + x.visits, 0);
+    const totalTimeSpent = sitesArray.reduce((sum, x) => sum + x.totalTime, 0);
+    const uniqueSites = sitesArray.length;
+
+    reportHTML += `<p><em>Total site visits: ${totalVisits}</em></p>`;
+    reportHTML += `<p><em>Total time spent: ${formatTime(totalTimeSpent)}</em></p>`;
+    reportHTML += `<p><em>Unique sites: ${uniqueSites}</em></p>`;
+
+    insightsDiv.innerHTML = reportHTML;
+  });
+}
