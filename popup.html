@@ -19,11 +19,12 @@
 
     <!-- Tabs -->
     <div class="tabs">
-      <button class="tab-button active" data-tab="blockListTab">Block List</button>
-      <button class="tab-button" data-tab="insightsTab">AI Insights</button>
+      <button class="tab-button active" data-tab="blockListTab">Blocked Sites</button>
+      <button class="tab-button" data-tab="trackerTab">Tracker</button>
+      <button class="tab-button" data-tab="aiInsightsTab">AI Insights</button>
     </div>
 
-    <!-- Tab content: Block List -->
+    <!-- Block List Tab -->
     <div class="tab-content" id="blockListTab">
       <section class="section">
         <h2>Distraction Blocker</h2>
@@ -35,20 +36,27 @@
       </section>
     </div>
 
-    <!-- Tab content: AI Insights -->
-    <div class="tab-content hidden" id="insightsTab">
+    <!-- Tracker Tab -->
+    <div class="tab-content hidden" id="trackerTab">
       <section class="section">
-        <h2>AI Insights</h2>
-
-        <!-- Sub-tabs for Today / This Week / Monthly -->
+        <h2>Tracker</h2>
         <div class="sub-tabs">
           <button class="sub-tab-button active" data-range="today">Today</button>
           <button class="sub-tab-button" data-range="week">This Week</button>
           <button class="sub-tab-button" data-range="month">Monthly</button>
         </div>
-
-        <div id="insightsContent">
+        <div id="trackerContent">
           <p>Loading usage data...</p>
+        </div>
+      </section>
+    </div>
+
+    <!-- AI Insights Tab -->
+    <div class="tab-content hidden" id="aiInsightsTab">
+      <section class="section">
+        <h2>AI Insights</h2>
+        <div id="aiInsightsContent">
+          <p>Loading AI suggestions...</p>
         </div>
       </section>
     </div>

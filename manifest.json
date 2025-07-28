@@ -16,7 +16,8 @@
     "*://*.youtube.com/*",
     "*://*.tiktok.com/*",
     "*://*.instagram.com/*",
-    "*://*.netflix.com/*"
+    "*://*.netflix.com/*",
+    "https://generativelanguage.googleapis.com/*"
   ],
   "background": {
     "service_worker": "background.js"
