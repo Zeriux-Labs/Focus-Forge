@@ -7,7 +7,6 @@
     "tabs",
     "storage",
     "webNavigation",
-    "scripting",
     "declarativeNetRequest",
     "declarativeNetRequestWithHostAccess"
   ],
