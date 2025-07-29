@@ -2,10 +2,12 @@ const blockInput = document.getElementById("blockInput");
 const addBlockBtn = document.getElementById("addBlockBtn");
 const blockList = document.getElementById("blockList");
 const powerButton = document.getElementById("powerButton");
+const statusDot = document.querySelector(".status-dot");
+const statusText = document.querySelector(".status-indicator span");
 
-const tabs = document.querySelectorAll(".tab-button");
+const tabs = document.querySelectorAll(".nav-tab");
 const tabContents = document.querySelectorAll(".tab-content");
-const subTabs = document.querySelectorAll(".sub-tab-button");
+const subTabs = document.querySelectorAll(".filter-btn");
 
 const trackerContent = document.getElementById("trackerContent");
 const aiInsightsContent = document.getElementById("aiInsightsContent");
@@ -30,15 +32,38 @@ function escapeHTML(str) {
 // --- Render blocked sites list ---
 function renderList() {
   blockList.innerHTML = "";
+  
+  // Update site count
+  const siteCount = document.querySelector(".site-count");
+  if (siteCount) {
+    siteCount.textContent = `${blockedSites.length} sites`;
+  }
+  
+  if (blockedSites.length === 0) {
+    blockList.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🚫</div>
+        <div class="empty-text">No blocked sites</div>
+        <div class="empty-subtext">Add websites to block during study mode</div>
+      </div>
+    `;
+    return;
+  }
+  
   blockedSites.forEach((site, index) => {
     const li = document.createElement("li");
-    li.textContent = site;
-
+    
+    const siteSpan = document.createElement("span");
+    siteSpan.className = "site-url";
+    siteSpan.textContent = site;
+    
     const removeBtn = document.createElement("button");
-    removeBtn.textContent = "✕";
+    removeBtn.className = "remove-btn";
+    removeBtn.innerHTML = "✕";
     removeBtn.title = "Remove site";
     removeBtn.onclick = () => removeSite(index);
 
+    li.appendChild(siteSpan);
     li.appendChild(removeBtn);
     blockList.appendChild(li);
   });
@@ -80,21 +105,50 @@ function removeSite(index) {
 // Update power button UI
 function updatePowerButton() {
   if (studyMode) {
+    powerButton.classList.add("on");
     powerButton.classList.remove("off");
     powerButton.title = "Turn OFF Study Mode";
+    
+    // Update status indicator
+    if (statusDot) {
+      statusDot.classList.add("active");
+    }
+    if (statusText) {
+      statusText.textContent = "Active";
+    }
   } else {
+    powerButton.classList.remove("on");
     powerButton.classList.add("off");
     powerButton.title = "Turn ON Study Mode";
+    
+    // Update status indicator
+    if (statusDot) {
+      statusDot.classList.remove("active");
+    }
+    if (statusText) {
+      statusText.textContent = "Inactive";
+    }
   }
 }
 
 // Load usage data for Tracker tab
 function loadUsageData(range) {
-  trackerContent.innerHTML = "<p>Loading usage data...</p>";
+  trackerContent.innerHTML = `
+    <div class="loading-state">
+      <div class="loading-spinner"></div>
+      <div>Loading usage data...</div>
+    </div>
+  `;
 
   chrome.runtime.sendMessage({ getUsageData: true, range }, (response) => {
     if (!response || !response.usageData) {
-      trackerContent.innerHTML = "<p>No usage data available.</p>";
+      trackerContent.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">📊</div>
+          <div class="empty-text">No usage data available</div>
+          <div class="empty-subtext">Browse the web to see your activity here</div>
+        </div>
+      `;
       return;
     }
 
@@ -108,7 +162,13 @@ function loadUsageData(range) {
       .sort((a, b) => b.visits - a.visits);
 
     if (sitesArray.length === 0) {
-      trackerContent.innerHTML = "<p>No sites tracked yet.</p>";
+      trackerContent.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">📊</div>
+          <div class="empty-text">No sites tracked yet</div>
+          <div class="empty-subtext">Start browsing to see your activity</div>
+        </div>
+      `;
       return;
     }
 
@@ -119,19 +179,56 @@ function loadUsageData(range) {
       return `${minutes}m ${seconds}s`;
     }
 
-    let reportHTML = `<h3>Top Visited Sites (${range.charAt(0).toUpperCase() + range.slice(1)}):</h3><ol>`;
-    sitesArray.slice(0, 5).forEach(({ site, visits, totalTime }) => {
-      reportHTML += `<li><strong>${escapeHTML(site)}</strong>: ${visits} visits, Time spent: ${formatTime(totalTime)}</li>`;
-    });
-    reportHTML += "</ol>";
-
     const totalVisits = sitesArray.reduce((sum, x) => sum + x.visits, 0);
     const totalTimeSpent = sitesArray.reduce((sum, x) => sum + x.totalTime, 0);
     const uniqueSites = sitesArray.length;
 
-    reportHTML += `<p><em>Total site visits: ${totalVisits}</em></p>`;
-    reportHTML += `<p><em>Total time spent: ${formatTime(totalTimeSpent)}</em></p>`;
-    reportHTML += `<p><em>Unique sites: ${uniqueSites}</em></p>`;
+    let reportHTML = `
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Top Visited Sites</div>
+          <div class="card-subtitle">${range.charAt(0).toUpperCase() + range.slice(1)} overview</div>
+        </div>
+        
+        <div class="stats-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+          <div style="text-align: center; padding: 1rem; background: var(--bg-glass); border-radius: var(--radius-lg); border: 1px solid var(--border-primary);">
+            <div style="font-size: 1.5rem; font-weight: 600; color: var(--text-primary);">${totalVisits}</div>
+            <div style="font-size: 0.75rem; color: var(--text-secondary);">Total Visits</div>
+          </div>
+          <div style="text-align: center; padding: 1rem; background: var(--bg-glass); border-radius: var(--radius-lg); border: 1px solid var(--border-primary);">
+            <div style="font-size: 1.5rem; font-weight: 600; color: var(--text-primary);">${formatTime(totalTimeSpent)}</div>
+            <div style="font-size: 0.75rem; color: var(--text-secondary);">Total Time</div>
+          </div>
+          <div style="text-align: center; padding: 1rem; background: var(--bg-glass); border-radius: var(--radius-lg); border: 1px solid var(--border-primary);">
+            <div style="font-size: 1.5rem; font-weight: 600; color: var(--text-primary);">${uniqueSites}</div>
+            <div style="font-size: 0.75rem; color: var(--text-secondary);">Unique Sites</div>
+          </div>
+        </div>
+        
+        <div class="sites-list">
+    `;
+    
+    sitesArray.slice(0, 5).forEach(({ site, visits, totalTime }, index) => {
+      reportHTML += `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: var(--bg-glass); border-radius: var(--radius-md); margin-bottom: 0.5rem; border: 1px solid var(--border-secondary);">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <div style="width: 1.5rem; height: 1.5rem; background: var(--primary-gradient); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 600; color: white;">${index + 1}</div>
+            <div>
+              <div style="font-weight: 500; color: var(--text-primary);">${escapeHTML(site)}</div>
+              <div style="font-size: 0.75rem; color: var(--text-secondary);">${visits} visits</div>
+            </div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-weight: 500; color: var(--text-primary);">${formatTime(totalTime)}</div>
+          </div>
+        </div>
+      `;
+    });
+
+    reportHTML += `
+        </div>
+      </div>
+    `;
 
     trackerContent.innerHTML = reportHTML;
   });
@@ -239,7 +336,19 @@ function createTypingAnimation(element, htmlText, callback = null) {
 
 // Load AI suggestions for AI Insights tab by asking background.js to call Gemini API
 async function loadAISuggestions() {
-  aiInsightsContent.innerHTML = "<p id='loadingText'>Analyzing your browsing habits with Gemini AI...</p>";
+  aiInsightsContent.innerHTML = `
+    <div class="loading-state">
+      <div class="ai-loading-animation">
+        <div class="ai-brain">
+          <div class="brain-pulse"></div>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+          </svg>
+        </div>
+      </div>
+      <div id='loadingText'>Analyzing your browsing habits with Gemini AI...</div>
+    </div>
+  `;
   createTypingAnimation(document.getElementById('loadingText'), "Analyzing your browsing habits with Gemini AI...");
 
   try {
@@ -250,9 +359,13 @@ async function loadAISuggestions() {
 
     if (!usageResponse?.usageData || Object.keys(usageResponse.usageData).length === 0) {
       aiInsightsContent.innerHTML = `
-        <div class="ai-error">
-          <h3>No browsing data available</h3>
-          <p id="noDataText"></p>
+        <div class="card">
+          <div class="ai-error">
+            <div class="card-header">
+              <div class="card-title">No browsing data available</div>
+            </div>
+            <p id="noDataText"></p>
+          </div>
         </div>
       `;
       
@@ -266,10 +379,14 @@ async function loadAISuggestions() {
     const sites = Object.keys(usageResponse.usageData);
     if (sites.length < 3) {
       aiInsightsContent.innerHTML = `
-        <div class="ai-notice">
-          <h3>Limited browsing data available</h3>
-          <p id="limitedDataText"></p>
-          <p id="currentSitesText"></p>
+        <div class="card">
+          <div class="ai-notice">
+            <div class="card-header">
+              <div class="card-title">Limited browsing data available</div>
+            </div>
+            <p id="limitedDataText"></p>
+            <p id="currentSitesText"></p>
+          </div>
         </div>
       `;
       
@@ -308,11 +425,15 @@ async function loadAISuggestions() {
     // Check if we got a valid response
     if (!aiResponse || aiResponse === "No response" || aiResponse.includes("Error:")) {
       aiInsightsContent.innerHTML = `
-        <div class="ai-error">
-          <h3>Gemini AI Error</h3>
-          <p id="geminiErrorText"></p>
-          <p id="geminiErrorHint"></p>
-          <button id="retryAiBtn" class="retry-btn">Retry</button>
+        <div class="card">
+          <div class="ai-error">
+            <div class="card-header">
+              <div class="card-title">Gemini AI Error</div>
+            </div>
+            <p id="geminiErrorText"></p>
+            <p id="geminiErrorHint"></p>
+            <button id="retryAiBtn" class="retry-btn">Retry</button>
+          </div>
         </div>
       `;
       
@@ -334,8 +455,14 @@ async function loadAISuggestions() {
 
     // Format the AI response with better styling and add typing animation
     aiInsightsContent.innerHTML = `
-      <div class="ai-response">
-        <div id="typingText" class="formatted-text"></div>
+      <div class="card">
+        <div class="ai-response">
+          <div class="card-header">
+            <div class="card-title">AI Insights</div>
+            <div class="card-subtitle">Personalized recommendations based on your browsing habits</div>
+          </div>
+          <div id="typingText" class="formatted-text"></div>
+        </div>
       </div>
     `;
     
@@ -363,10 +490,14 @@ async function loadAISuggestions() {
     createTypingAnimation(document.getElementById("typingText"), formattedText);
   } catch (error) {
     aiInsightsContent.innerHTML = `
-      <div class="ai-error">
-        <h3>Error</h3>
-        <p id="errorText"></p>
-        <button id="retryAiBtn" class="retry-btn">Retry</button>
+      <div class="card">
+        <div class="ai-error">
+          <div class="card-header">
+            <div class="card-title">Error</div>
+          </div>
+          <p id="errorText"></p>
+          <button id="retryAiBtn" class="retry-btn">Retry</button>
+        </div>
       </div>
     `;
     
@@ -401,8 +532,13 @@ tabs.forEach((tabBtn) => {
 
     const tabId = tabBtn.dataset.tab;
     tabContents.forEach(tc => {
-      if (tc.id === tabId) tc.classList.remove("hidden");
-      else tc.classList.add("hidden");
+      if (tc.id === tabId) {
+        tc.classList.remove("hidden");
+        tc.classList.add("active");
+      } else {
+        tc.classList.add("hidden");
+        tc.classList.remove("active");
+      }
     });
 
     if (tabId === "trackerTab") {
@@ -418,7 +554,10 @@ subTabs.forEach((btn) => {
     subTabs.forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
     currentRange = btn.dataset.range;
-    if (!trackerContent.classList.contains("hidden")) {
+    
+    // Check if tracker tab is currently active
+    const trackerTab = document.getElementById("trackerTab");
+    if (trackerTab && !trackerTab.classList.contains("hidden")) {
       loadUsageData(currentRange);
     }
   });

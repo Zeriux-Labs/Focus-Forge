@@ -5,62 +5,136 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Focus Forge</title>
   <link rel="stylesheet" href="popup.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
   <div class="container">
-
-    <h1 class="title">Focus Forge</h1>
-
-    <button id="powerButton" class="off" title="Toggle Study Mode">
-      <svg viewBox="0 0 24 24" width="48" height="48" fill="white">
-        <path d="M12 2v10m0 0v0m6.36-4.36a9 9 0 11-12.72 0" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-      </svg>
-    </button>
-
-    <!-- Tabs -->
-    <div class="tabs">
-      <button class="tab-button active" data-tab="blockListTab">Blocked Sites</button>
-      <button class="tab-button" data-tab="trackerTab">Tracker</button>
-      <button class="tab-button" data-tab="aiInsightsTab">AI Insights</button>
-    </div>
-
-    <!-- Block List Tab -->
-    <div class="tab-content" id="blockListTab">
-      <section class="section">
-        <h2>Distraction Blocker</h2>
-        <ul class="block-list" id="blockList"></ul>
-        <div class="input-group">
-          <input type="text" id="blockInput" placeholder="Enter URL" />
-          <button id="addBlockBtn">Add Site</button>
+    <!-- Header Section -->
+    <header class="header">
+      <div class="power-section centered">
+        <div class="status-indicator">
+          <div class="status-dot"></div>
+          <span class="status-text">Inactive</span>
         </div>
-      </section>
-    </div>
+        <button id="powerButton" class="power-button off">
+          <div class="power-ring">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.58-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/>
+            </svg>
+          </div>
+        </button>
+      </div>
+    </header>
 
-    <!-- Tracker Tab -->
-    <div class="tab-content hidden" id="trackerTab">
-      <section class="section">
-        <h2>Tracker</h2>
-        <div class="sub-tabs">
-          <button class="sub-tab-button active" data-range="today">Today</button>
-          <button class="sub-tab-button" data-range="week">This Week</button>
-          <button class="sub-tab-button" data-range="month">Monthly</button>
-        </div>
-        <div id="trackerContent">
-          <p>Loading usage data...</p>
-        </div>
-      </section>
-    </div>
+    <!-- Navigation Tabs -->
+    <nav class="navigation">
+      <div class="nav-tabs">
+        <button class="nav-tab active" data-tab="blockListTab">
+          <svg viewBox="0 0 24 24" width="18" height="18">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="none" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          <span>Blocker</span>
+        </button>
+        <button class="nav-tab" data-tab="trackerTab">
+          <svg viewBox="0 0 24 24" width="18" height="18">
+            <path d="M3 3v5h5M3 8l4-4 4 4 8-8M21 21v-5h-5M21 16l-4 4-4-4-8 8" fill="none" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          <span>Analytics</span>
+        </button>
+        <button class="nav-tab" data-tab="aiInsightsTab">
+          <svg viewBox="0 0 24 24" width="18" height="18">
+            <path d="M9.663 17h4.673M12 3v1m6.364-.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" fill="none" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          <span>AI Insights</span>
+        </button>
+      </div>
+    </nav>
 
-    <!-- AI Insights Tab -->
-    <div class="tab-content hidden" id="aiInsightsTab">
-      <section class="section">
-        <h2>AI Insights</h2>
-        <div id="aiInsightsContent">
-          <p>Loading AI suggestions...</p>
-        </div>
-      </section>
-    </div>
+    <!-- Content Area -->
+    <main class="content">
+      <!-- Block List Tab -->
+      <div class="tab-content active" id="blockListTab">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Distraction Blocker</h2>
+            <div class="card-subtitle">Block distracting websites to stay focused</div>
+          </div>
+          
+          <div class="input-section">
+            <div class="input-group">
+              <input type="text" id="blockInput" placeholder="Enter website URL (e.g., facebook.com)" />
+              <button id="addBlockBtn" class="add-button">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                  <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                Add
+              </button>
+            </div>
+          </div>
 
+          <div class="blocked-sites-section">
+            <div class="section-header">
+              <span class="section-title">Blocked Sites</span>
+              <span class="site-count" id="siteCount">0 sites</span>
+            </div>
+            <ul class="block-list" id="blockList">
+              <li class="empty-state">
+                <div class="empty-icon">🛡️</div>
+                <div class="empty-text">No blocked sites yet</div>
+                <div class="empty-subtext">Add websites above to start blocking distractions</div>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tracker Tab -->
+      <div class="tab-content" id="trackerTab">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Usage Analytics</h2>
+            <div class="card-subtitle">Track your browsing patterns and productivity</div>
+          </div>
+          
+          <div class="time-filter">
+            <button class="filter-btn active" data-range="today">Today</button>
+            <button class="filter-btn" data-range="week">This Week</button>
+            <button class="filter-btn" data-range="month">Monthly</button>
+          </div>
+          
+          <div id="trackerContent" class="tracker-content">
+            <div class="loading-state">
+              <div class="loading-spinner"></div>
+              <p>Loading usage data...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Insights Tab -->
+      <div class="tab-content" id="aiInsightsTab">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">AI Insights</h2>
+            <div class="card-subtitle">Personalized productivity recommendations</div>
+          </div>
+          
+          <div id="aiInsightsContent" class="ai-content">
+            <div class="loading-state">
+              <div class="ai-loading-animation">
+                <div class="ai-brain">
+                  <div class="brain-pulse"></div>
+                  <svg viewBox="0 0 24 24" width="32" height="32">
+                    <path d="M9.663 17h4.673M12 3v1m6.364-.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" fill="none" stroke="currentColor" stroke-width="2"/>
+                  </svg>
+                </div>
+              </div>
+              <p>Analyzing your browsing habits with AI...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
   </div>
 
   <script src="popup.js"></script>
