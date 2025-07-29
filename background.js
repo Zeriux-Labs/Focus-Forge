@@ -58,8 +58,29 @@ async function saveCurrentTabTime() {
 
   if (currentActive.tabId !== null && currentActive.startTime !== null) {
     try {
-      const tab = await chrome.tabs.get(currentActive.tabId);
-      if (!tab || !tab.url || tab.url.startsWith("chrome://")) {
+      // Try to get the tab information
+      let tab;
+      try {
+        tab = await chrome.tabs.get(currentActive.tabId);
+      } catch (tabError) {
+        // Tab no longer exists, reset current active and exit
+        console.log(`Tab ${currentActive.tabId} no longer exists, resetting tracking`);
+        currentActive = { tabId: null, url: null, startTime: null };
+        savingTimeInProgress = false;
+        return;
+      }
+      
+      if (!tab || !tab.url) {
+        savingTimeInProgress = false;
+        return;
+      }
+      
+      // Skip tracking for chrome:// pages, extension pages, and other special URLs
+      if (tab.url.startsWith("chrome://") || 
+          tab.url.startsWith("chrome-extension://") ||
+          tab.url.startsWith("about:") ||
+          tab.url.startsWith("edge://") ||
+          tab.url.startsWith("brave://")) {
         savingTimeInProgress = false;
         return;
       }
@@ -67,24 +88,42 @@ async function saveCurrentTabTime() {
       const now = Date.now();
       let timeSpent = now - currentActive.startTime;
 
-      // Sanity checks
-      if (timeSpent < 0 || timeSpent > 60 * 60 * 1000) {
+      // More reasonable sanity checks
+      // Ignore negative times and cap at 1 hour to prevent unrealistic tracking
+      if (timeSpent < 0) {
         timeSpent = 0;
+      } else if (timeSpent > 60 * 60 * 1000) { // 1 hour max
+        timeSpent = 60 * 60 * 1000;
       }
+      
+      // Only track if time spent is at least 500ms to avoid micro-interactions
+      if (timeSpent >= 500) {
+        try {
+          const hostname = new URL(tab.url).hostname.replace(/^www\./, "");
+          
+          if (!hostname) {
+            savingTimeInProgress = false;
+            return;
+          }
 
-      const hostname = new URL(tab.url).hostname.replace("www.", "");
+          if (!usageData[hostname]) {
+            usageData[hostname] = { visits: 0, totalTime: 0, lastVisit: 0 };
+          }
 
-      if (!usageData[hostname]) {
-        usageData[hostname] = { visits: 0, totalTime: 0, lastVisit: 0 };
+          usageData[hostname].totalTime += timeSpent;
+          usageData[hostname].lastVisit = now;
+          await chrome.storage.local.set({ usageData });
+        } catch (urlError) {
+          console.error("Error parsing URL:", urlError, tab.url);
+        }
       }
-
-      usageData[hostname].totalTime += timeSpent;
-      usageData[hostname].lastVisit = now;
-      await chrome.storage.local.set({ usageData });
-
+      
+      // Update the start time for the next calculation
       currentActive.startTime = now;
     } catch (e) {
-      // Ignore errors silently
+      console.error("Error saving tab time:", e);
+      // Reset tracking on any other error
+      currentActive = { tabId: null, url: null, startTime: null };
     }
   }
 
@@ -92,6 +131,7 @@ async function saveCurrentTabTime() {
 }
 
 async function switchActiveTab(newTabId) {
+  // Save time for the previous tab before switching
   await saveCurrentTabTime();
 
   if (newTabId === null) {
@@ -100,65 +140,110 @@ async function switchActiveTab(newTabId) {
   }
 
   try {
-    const tab = await chrome.tabs.get(newTabId);
-    if (!tab || !tab.url || tab.url.startsWith("chrome://")) {
+    // Try to get the tab information
+    let tab;
+    try {
+      tab = await chrome.tabs.get(newTabId);
+    } catch (tabError) {
+      // Tab no longer exists, reset current active and exit
+      console.log(`Tab ${newTabId} no longer exists, cannot switch to it`);
+      currentActive = { tabId: null, url: null, startTime: null };
+      return;
+    }
+    
+    if (!tab || !tab.url) {
+      currentActive = { tabId: null, url: null, startTime: null };
+      return;
+    }
+    
+    // Skip tracking for chrome:// pages, extension pages, and other special URLs
+    if (tab.url.startsWith("chrome://") || 
+        tab.url.startsWith("chrome-extension://") ||
+        tab.url.startsWith("about:") ||
+        tab.url.startsWith("edge://") ||
+        tab.url.startsWith("brave://")) {
       currentActive = { tabId: null, url: null, startTime: null };
       return;
     }
 
+    // Only update if we're switching to a different tab or URL
     if (currentActive.tabId !== newTabId || currentActive.url !== tab.url) {
-      currentActive = {
-        tabId: newTabId,
-        url: tab.url,
-        startTime: Date.now(),
-      };
-
-      const hostname = new URL(tab.url).hostname.replace("www.", "");
-      if (!usageData[hostname]) {
-        usageData[hostname] = { visits: 0, totalTime: 0, lastVisit: 0 };
+      try {
+        const hostname = new URL(tab.url).hostname.replace(/^www\./, "");
+        
+        if (hostname) {
+          // Initialize usage data for this hostname if it doesn't exist
+          if (!usageData[hostname]) {
+            usageData[hostname] = { visits: 0, totalTime: 0, lastVisit: 0 };
+          }
+          
+          // Increment visit count and update last visit timestamp
+          usageData[hostname].visits += 1;
+          usageData[hostname].lastVisit = Date.now();
+          await chrome.storage.local.set({ usageData });
+        }
+        
+        // Update current active tab information
+        currentActive = {
+          tabId: newTabId,
+          url: tab.url,
+          startTime: Date.now(),
+        };
+      } catch (urlError) {
+        console.error("Error parsing URL during tab switch:", urlError, tab.url);
+        currentActive = { tabId: null, url: null, startTime: null };
       }
-      usageData[hostname].visits += 1;
-      usageData[hostname].lastVisit = Date.now();
-      await chrome.storage.local.set({ usageData });
     }
   } catch (e) {
+    console.error("Error switching active tab:", e);
     currentActive = { tabId: null, url: null, startTime: null };
   }
 }
 
 // Gemini AI API call helper - FIXED extraction of text
 async function callGeminiAI(prompt) {
-  const response = await fetch(GEMINI_API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-goog-api-key": GEMINI_API_KEY,
-    },
-    body: JSON.stringify({
-      contents: [
-        {
-          parts: [
-            { text: prompt }
-          ]
-        }
-      ]
-    }),
-  });
+  try {
+    const response = await fetch(GEMINI_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-goog-api-key": GEMINI_API_KEY,
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              { text: prompt }
+            ]
+          }
+        ]
+      }),
+    });
 
-  if (!response.ok) {
-    throw new Error(`Gemini API error: ${response.statusText}`);
+    if (!response.ok) {
+      console.error(`Gemini API HTTP error: ${response.status} ${response.statusText}`);
+      throw new Error(`Gemini API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log("Gemini API full response:", data);
+
+    // Extract the generated text correctly (use .text inside parts)
+    const generatedText = 
+      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      data?.candidates?.[0]?.content?.text ||
+      data?.generations?.[0]?.text;
+      
+    if (!generatedText) {
+      console.error("Failed to extract text from Gemini API response", data);
+      return "No response - Error extracting text from API response";
+    }
+
+    return generatedText;
+  } catch (error) {
+    console.error("Gemini API call failed:", error);
+    return `Error: ${error.message}`;
   }
-
-  const data = await response.json();
-  console.log("Gemini API full response:", data);
-
-  // Extract the generated text correctly (use .text inside content)
-  const generatedText =
-    data?.candidates?.[0]?.content?.text ||
-    data?.generations?.[0]?.text ||
-    "No response";
-
-  return generatedText;
 }
 
 // Message handler
@@ -231,24 +316,67 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Tab and window event listeners
 chrome.tabs.onActivated.addListener(({ tabId }) => {
-  switchActiveTab(tabId);
+  try {
+    switchActiveTab(tabId);
+  } catch (error) {
+    console.error("Error in tab activation handler:", error);
+    // Reset tracking on any error
+    currentActive = { tabId: null, url: null, startTime: null };
+  }
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (changeInfo.status === "complete" && tab.active) {
-    switchActiveTab(tabId);
+  try {
+    if (changeInfo.status === "complete" && tab.active) {
+      switchActiveTab(tabId);
+    }
+  } catch (error) {
+    console.error("Error in tab update handler:", error);
+    // Reset tracking on any error
+    currentActive = { tabId: null, url: null, startTime: null };
+  }
+});
+
+// Handle tab removal to prevent errors with non-existent tabs
+chrome.tabs.onRemoved.addListener((tabId) => {
+  try {
+    // If the closed tab was the active one, reset tracking
+    if (currentActive.tabId === tabId) {
+      console.log(`Active tab ${tabId} was closed, resetting tracking`);
+      saveCurrentTabTime().then(() => {
+        currentActive = { tabId: null, url: null, startTime: null };
+      }).catch(error => {
+        console.error("Error saving tab time during tab removal:", error);
+        currentActive = { tabId: null, url: null, startTime: null };
+      });
+    }
+  } catch (error) {
+    console.error("Error in tab removal handler:", error);
+    // Reset tracking on any error
+    currentActive = { tabId: null, url: null, startTime: null };
   }
 });
 
 chrome.windows.onFocusChanged.addListener(async (windowId) => {
-  if (windowId === chrome.windows.WINDOW_ID_NONE) {
-    await switchActiveTab(null);
-  } else {
-    const tabs = await chrome.tabs.query({ active: true, windowId });
-    if (tabs.length > 0) {
-      await switchActiveTab(tabs[0].id);
-    } else {
+  try {
+    if (windowId === chrome.windows.WINDOW_ID_NONE) {
       await switchActiveTab(null);
+    } else {
+      try {
+        const tabs = await chrome.tabs.query({ active: true, windowId });
+        if (tabs.length > 0) {
+          await switchActiveTab(tabs[0].id);
+        } else {
+          await switchActiveTab(null);
+        }
+      } catch (queryError) {
+        console.error("Error querying tabs during window focus change:", queryError);
+        await switchActiveTab(null);
+      }
     }
+  } catch (error) {
+    console.error("Error handling window focus change:", error);
+    // Reset tracking on any error
+    currentActive = { tabId: null, url: null, startTime: null };
   }
 });

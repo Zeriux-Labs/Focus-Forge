@@ -1,28 +1,22 @@
-const blockedSites = [
-    "youtube.com",
-    "tiktok.com",
-    "instagram.com",
-    "netflix.com"
-  ];
+// This content script works with the background script to enhance the blocking functionality
+// The main blocking is handled by declarativeNetRequest in background.js
+
+// Listen for messages from the background script
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Handle any content-specific actions here if needed
+  if (message.action === "contentCheck") {
+    sendResponse({ status: "Content script is active" });
+    return true;
+  }
   
-  let focusMode = false;
-  
-  chrome.runtime.onInstalled.addListener(() => {
-    chrome.storage.local.set({ focusMode: false });
-  });
-  
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && 'focusMode' in changes) {
-      focusMode = changes.focusMode.newValue;
-    }
-  });
-  
-  chrome.webNavigation.onCompleted.addListener(async (details) => {
-    const url = new URL(details.url);
-    const hostname = url.hostname;
-  
-    if (focusMode && blockedSites.some(site => hostname.includes(site))) {
-      chrome.tabs.remove(details.tabId);
-    }
-  }, { url: blockedSites.map(site => ({ hostContains: site })) });
+  // Default response
+  sendResponse({ status: "Unknown message" });
+  return false;
+});
+
+// Add a class to the body to enable custom CSS styling if needed
+document.body.classList.add('focus-forge-active');
+
+// Log that the content script has loaded (for debugging)
+console.log("Focus Forge content script loaded");
   

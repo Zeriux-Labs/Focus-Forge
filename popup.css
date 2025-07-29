@@ -101,6 +101,88 @@ input#blockInput {
   transition: border-color 0.3s;
 }
 
+/* AI Insights styling */
+.ai-error, .ai-notice, .ai-response {
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.ai-error {
+  background-color: rgba(255, 0, 0, 0.1);
+  border: 1px solid rgba(255, 0, 0, 0.3);
+}
+
+.ai-notice {
+  background-color: rgba(255, 165, 0, 0.1);
+  border: 1px solid rgba(255, 165, 0, 0.3);
+}
+
+.ai-response {
+  background-color: rgba(0, 128, 0, 0.1);
+  border: 1px solid rgba(0, 128, 0, 0.3);
+}
+
+/* Typing cursor animation */
+@keyframes blink {
+  0%, 100% { border-right-color: transparent; }
+  50% { border-right-color: #ccc; }
+}
+
+#typingText, #errorText, #geminiErrorText, #geminiErrorHint, #limitedDataText, #currentSitesText, #noDataText {
+  border-right: 2px solid #ccc;
+  padding-right: 2px;
+  animation: blink 0.7s infinite;
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+.formatted-text {
+  white-space: normal;
+  word-wrap: break-word;
+  line-height: 1.5;
+}
+
+#typingText strong {
+  font-weight: bold;
+  color: #fff;
+  display: inline;
+}
+
+#typingText em {
+  font-style: italic;
+  color: #ddd;
+  display: inline;
+}
+
+#typingText br {
+  display: block;
+  margin: 5px 0;
+  content: "";
+}
+
+
+
+.ai-error h3, .ai-notice h3 {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.retry-btn {
+  background-color: #444;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: background-color 0.2s;
+}
+
+.retry-btn:hover {
+  background-color: #666;
+}
+
 input#blockInput:focus {
   border-color: #555;
 }
